@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
@@ -5,7 +6,7 @@ const bodyParser = require('body-parser');
 const { MongoClient } = require('mongodb');
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // Middlewares
 app.use(cors());
@@ -13,13 +14,10 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // MongoDB connection
-const uri = "process.env.MONGODB_URI";
+const uri = process.env.MONGO_URI;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
-// Global token storage
 let expoPushToken = null;
-
-// Distance limit for alert
 const DISTANCE_LIMIT = 100; // Distance limit in cm
 
 // Connect to MongoDB Atlas
@@ -43,7 +41,7 @@ app.post('/register-token', async (req, res) => {
   }
 
   expoPushToken = token;
-  console.log('Expo Push Token registered:', token);
+  console.log('Expo Push Token registered:', token);  // Log received token
 
   try {
     const collection = client.db("ultrasense").collection("push_tokens");
@@ -69,8 +67,8 @@ app.post('/distance', async (req, res) => {
     const collection = client.db("ultrasense").collection("distance_data");
     await collection.insertOne({ distance, timestamp: new Date() });
 
-    // Send notification if distance exceeds limit
-    if (distance >=DISTANCE_LIMIT && expoPushToken) {
+    // If distance exceeds the limit, send push notification
+    if (distance >= DISTANCE_LIMIT && expoPushToken) {
       console.log('🚨 Distance limit crossed! Sending notification...');
       await sendPushNotification(expoPushToken, distance);
     }
@@ -111,6 +109,8 @@ async function sendPushNotification(token, distance) {
     data: { distance },
   };
 
+  console.log('Sending push notification with message:', message);  // Log the message
+
   try {
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
@@ -123,7 +123,11 @@ async function sendPushNotification(token, distance) {
     });
 
     const data = await response.json();
-    console.log('📤 Push notification response:', JSON.stringify(data));
+    console.log('📤 Push notification response:', data);  // Log Expo response
+
+    if (data.errors) {
+      console.error('❌ Error sending push notification:', data.errors);
+    }
   } catch (error) {
     console.error('❌ Error sending push notification:', error);
   }
