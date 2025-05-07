@@ -101,4 +101,8 @@ app.get('/latest-distance', async (req, res) => {
     res.status(500).send('Error fetching distance');
   }
 });
+app.use((req, res) => {
+  res.status(404).send(`Route not found: ${req.originalUrl}`);
+});
+
 
