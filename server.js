@@ -21,7 +21,11 @@ MongoClient.connect(MONGO_URI)
     db = client.db('ultrasense');
     tokensCollection = db.collection('push_tokens');
     distancesCollection = db.collection('distances');
-    app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
+    app.listen(port, () => {
+      console.log('✅ MongoDB connected successfully');
+      console.log(`🚀 Server running on port ${port}`);
+    });
+    
   })
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
