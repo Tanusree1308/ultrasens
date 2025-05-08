@@ -24,6 +24,7 @@ console.log('🔌 Attempting to connect to MongoDB...');
 let db, tokensCollection, distancesCollection;
 
 // Only start the server after successful MongoDB connection
+console.log('📦 MONGO_URI:', MONGO_URI);
 MongoClient.connect(MONGO_URI)
   .then((client) => {
     db = client.db('ultrasense');
