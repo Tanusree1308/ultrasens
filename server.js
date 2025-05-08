@@ -18,6 +18,7 @@ let db, tokensCollection, distancesCollection;
 let dbConnected = false;
 
 // MongoDB Connection
+console.log('🔌 Connecting to MongoDB...');
 MongoClient.connect(MONGO_URI)
   .then((client) => {
     db = client.db('ultrasense');
