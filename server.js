@@ -7,41 +7,42 @@ require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+const expo = new Expo();
 
 app.use(cors());
 app.use(bodyParser.json());
 
-const expo = new Expo();
 const MONGO_URI = process.env.MONGO_URI;
 
-let db, tokensCollection, distancesCollection;
-let dbConnected = false;
+if (!MONGO_URI) {
+  console.error('❌ MONGO_URI is missing from environment variables!');
+  process.exit(1);
+}
 
-// MongoDB Connection
-console.log('🔌 Connecting to MongoDB...');
+console.log('🔌 Attempting to connect to MongoDB...');
+
+let db, tokensCollection, distancesCollection;
+
+// Only start the server after successful MongoDB connection
 MongoClient.connect(MONGO_URI)
   .then((client) => {
     db = client.db('ultrasense');
     tokensCollection = db.collection('push_tokens');
     distancesCollection = db.collection('distances');
-    dbConnected = true;
+
     console.log('✅ MongoDB connected successfully');
+
+    // Start server here after successful DB connection
     app.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
     });
   })
   .catch((err) => {
-    console.error('❌ MongoDB connection error:', err.message);
+    console.error('❌ MongoDB connection failed:', err);
     process.exit(1);
   });
 
-// Middleware to check DB connection
-app.use((req, res, next) => {
-  if (!dbConnected) return res.status(503).send('Service unavailable: DB not connected');
-  next();
-});
-
-// Register push token
+// Your routes go here (unchanged)
 app.post('/register-token', async (req, res) => {
   const { token, experienceId } = req.body;
   if (!token || !experienceId) return res.status(400).send('Missing token or experienceId');
@@ -54,12 +55,11 @@ app.post('/register-token', async (req, res) => {
     );
     res.send('✅ Token registered');
   } catch (err) {
-    console.error('❌ Error registering token:', err.message);
+    console.error('❌ Error registering token:', err);
     res.status(500).send('Error registering token');
   }
 });
 
-// Receive and process distance
 app.post('/send-distance', async (req, res) => {
   const { distance } = req.body;
   if (typeof distance !== 'number') return res.status(400).send('Invalid distance');
@@ -94,7 +94,7 @@ app.post('/send-distance', async (req, res) => {
             const response = await expo.sendPushNotificationsAsync(chunk);
             console.log(`📤 Push notification response for ${experienceId}:`, response);
           } catch (err) {
-            console.error('❌ Error sending push notification:', err.message);
+            console.error('❌ Error sending push notification:', err);
           }
         }
       }
@@ -102,23 +102,20 @@ app.post('/send-distance', async (req, res) => {
 
     res.send('📏 Distance received');
   } catch (err) {
-    console.error('❌ Error storing distance:', err.message);
+    console.error('❌ Error storing distance:', err);
     res.status(500).send('Error storing distance');
   }
 });
 
-// Get latest distance
 app.get('/latest-distance', async (req, res) => {
   try {
     const latest = await distancesCollection.find().sort({ createdAt: -1 }).limit(1).toArray();
     res.json(latest[0] || { distance: null });
   } catch (err) {
-    console.error('❌ Error fetching distance:', err.message);
     res.status(500).send('Error fetching distance');
   }
 });
 
-// Fallback route (404)
 app.use((req, res) => {
-  res.status(404).send(`❌ Route not found: ${req.originalUrl}`);
+  res.status(404).send(`Route not found: ${req.originalUrl}`);
 });
